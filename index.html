@@ -220,13 +220,21 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the Canvas environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // VÁRIAVEIS DE CONFIGURAÇÃO DO FIREBASE (SEUS VALORES REAIS!)
+        const firebaseConfig = {
+          apiKey: "AIzaSyBp4bFUS1Xrrh3Qw3vNXhLL1FruiPoMa_Y",
+          authDomain: "cvmlgerenciadorfuncionarios.firebaseapp.com",
+          projectId: "cvmlgerenciadorfuncionarios",
+          storageBucket: "cvmlgerenciadorfuncionarios.firebasestorage.app",
+          messagingSenderId: "989685510582",
+          appId: "1:989685510582:web:aed8fd27cc9c300dc31117"
+        };
+
+        // Para este aplicativo em GitHub Pages, usaremos o projectId como o appId para consistência com as regras do Firestore
+        const appId = firebaseConfig.projectId;
 
         let app;
         let db;
@@ -242,12 +250,12 @@
         const userIdDisplay = document.getElementById('user-id-display');
 
         const addEmployeeVoiceBtn = document.getElementById('add-employee-voice-btn');
-        const addEmployeeManualBtn = document.getElementById('add-employee-manual-btn'); // New
+        const addEmployeeManualBtn = document.getElementById('add-employee-manual-btn');
         const listEmployeesBtn = document.getElementById('list-employees-btn');
         const searchEmployeeVoiceBtn = document.getElementById('search-employee-voice-btn');
-        const searchEmployeeManualBtn = document.getElementById('search-employee-manual-btn'); // New
+        const searchEmployeeManualBtn = document.getElementById('search-employee-manual-btn');
         const deleteEmployeeVoiceBtn = document.getElementById('delete-employee-voice-btn');
-        const deleteEmployeeManualBtn = document.getElementById('delete-employee-manual-btn'); // New
+        const deleteEmployeeManualBtn = document.getElementById('delete-employee-manual-btn');
 
         // Modals
         const confirmationModal = document.getElementById('confirmation-modal');
@@ -256,37 +264,37 @@
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
 
-        const addEmployeeModal = document.getElementById('add-employee-modal'); // New
-        const addEmployeeForm = document.getElementById('add-employee-form'); // New
-        const addNomeInput = document.getElementById('add-nome'); // New
-        const addMatriculaInput = document.getElementById('add-matricula'); // New
-        const addCargoInput = document.getElementById('add-cargo'); // New
-        const addDataAdmissaoInput = document.getElementById('add-dataAdmissao'); // New
-        const addTelefoneInput = document.getElementById('add-telefone'); // New
-        const addEmailInput = document.getElementById('add-email'); // New
-        const addDepartamentoInput = document.getElementById('add-departamento'); // New
-        const cancelAddBtn = document.getElementById('cancel-add-btn'); // New
-        const saveAddBtn = document.getElementById('save-add-btn'); // New
+        const addEmployeeModal = document.getElementById('add-employee-modal');
+        const addEmployeeForm = document.getElementById('add-employee-form');
+        const addNomeInput = document.getElementById('add-nome');
+        const addMatriculaInput = document.getElementById('add-matricula');
+        const addCargoInput = document.getElementById('add-cargo');
+        const addDataAdmissaoInput = document.getElementById('add-dataAdmissao');
+        const addTelefoneInput = document.getElementById('add-telefone');
+        const addEmailInput = document.getElementById('add-email');
+        const addDepartamentoInput = document.getElementById('add-departamento');
+        const cancelAddBtn = document.getElementById('cancel-add-btn');
+        const saveAddBtn = document.getElementById('save-add-btn');
 
-        const editEmployeeModal = document.getElementById('edit-employee-modal'); // New
-        const editEmployeeForm = document.getElementById('edit-employee-form'); // New
-        const editOriginalMatriculaInput = document.getElementById('edit-originalMatricula'); // New hidden field
-        const editNomeInput = document.getElementById('edit-nome'); // New
-        const editMatriculaInput = document.getElementById('edit-matricula'); // New
-        const editCargoInput = document.getElementById('edit-cargo'); // New
-        const editDataAdmissaoInput = document.getElementById('edit-dataAdmissao'); // New
-        const editTelefoneInput = document.getElementById('edit-telefone'); // New
-        const editEmailInput = document.getElementById('edit-email'); // New
-        const editDepartamentoInput = document.getElementById('edit-departamento'); // New
-        const cancelEditBtn = document.getElementById('cancel-edit-btn'); // New
-        const saveEditBtn = document.getElementById('save-edit-btn'); // New
+        const editEmployeeModal = document.getElementById('edit-employee-modal');
+        const editEmployeeForm = document.getElementById('edit-employee-form');
+        const editOriginalMatriculaInput = document.getElementById('edit-originalMatricula');
+        const editNomeInput = document.getElementById('edit-nome');
+        const editMatriculaInput = document.getElementById('edit-matricula');
+        const editCargoInput = document.getElementById('edit-cargo');
+        const editDataAdmissaoInput = document.getElementById('edit-dataAdmissao');
+        const editTelefoneInput = document.getElementById('edit-telefone');
+        const editEmailInput = document.getElementById('edit-email');
+        const editDepartamentoInput = document.getElementById('edit-departamento');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const saveEditBtn = document.getElementById('save-edit-btn');
 
-        const promptInputModal = document.getElementById('prompt-input-modal'); // New
-        const promptInputTitle = document.getElementById('prompt-input-title'); // New
-        const promptInputMessage = document.getElementById('prompt-input-message'); // New
-        const promptInputField = document.getElementById('prompt-input-field'); // New
-        const promptInputCancelBtn = document.getElementById('prompt-input-cancel-btn'); // New
-        const promptInputConfirmBtn = document.getElementById('prompt-input-confirm-btn'); // New
+        const promptInputModal = document.getElementById('prompt-input-modal');
+        const promptInputTitle = document.getElementById('prompt-input-title');
+        const promptInputMessage = document.getElementById('prompt-input-message');
+        const promptInputField = document.getElementById('prompt-input-field');
+        const promptInputCancelBtn = document.getElementById('prompt-input-cancel-btn');
+        const promptInputConfirmBtn = document.getElementById('prompt-input-confirm-btn');
 
         let recognition; // Web Speech API SpeechRecognition object
         let currentOnConfirmPromptInput = null; // Callback for prompt input modal
@@ -299,19 +307,15 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Sign in with custom token if available, otherwise anonymously
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Fora do ambiente Canvas, sempre faremos login anonimamente
+                await signInAnonymously(auth);
 
                 // Listen for auth state changes
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
                         userIdDisplay.textContent = userId;
-                        // Set up the employees collection path
+                        // Set up the employees collection path using the provided appId (now projectId)
                         employeesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/employees`);
                         displayMessage("Firebase inicializado e usuário autenticado. Pronto para operar!");
                         setupRealtimeListener(); // Start listening for employee changes
@@ -323,7 +327,7 @@
                 });
             } catch (error) {
                 console.error("Erro ao inicializar Firebase:", error);
-                displayError(`Erro ao inicializar Firebase: ${error.message}`);
+                displayError(`Erro ao inicializar Firebase: ${error.message}. Por favor, verifique suas configurações do Firebase.`);
             }
         }
 
