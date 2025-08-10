@@ -51,11 +51,11 @@
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl border border-gray-200">
+    <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl border border-gray-200 relative">
         <h1 class="text-3xl font-bold text-center mb-6 text-indigo-700">Gerenciador de Funcionários</h1>
 
-        <!-- User ID Display -->
-        <div id="user-info" class="text-sm text-gray-600 text-center mb-4">
+        <!-- User ID Display - Moved and styled for less prominence -->
+        <div id="user-info" class="absolute top-4 right-4 text-xs text-gray-400">
             ID do Usuário: <span id="user-id-display" class="font-medium text-indigo-500">Carregando...</span>
         </div>
 
@@ -71,7 +71,7 @@
         
         <!-- New: Filter input and button -->
         <div class="mb-4">
-            <label for="filter-employee-input" class="block text-sm font-medium text-gray-700 mb-1">Filtrar Funcionários por Nome, Matrícula ou Cargo:</label>
+            <label for="filter-employee-input" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por termo:</label>
             <div class="flex flex-col sm:flex-row gap-2">
                 <input type="text" id="filter-employee-input" placeholder="Digite o termo de busca..." class="form-input flex-grow">
                 <button id="apply-filter-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-75">
