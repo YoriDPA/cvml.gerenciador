@@ -168,7 +168,7 @@
                 </div>
                 <div class="mb-4">
                     <label for="add-dataAdmissao" class="block text-sm font-medium text-gray-700">Data de Admissão (AAAA-MM-DD)</label>
-                    <input type="date" id="add-dataAdmissao" name="dataAdmissao" class="form-input" required>
+                    <input type="date" id="add-dataAdmissao" name="dataAdmissao" class="form-input"> <!-- 'required' removed -->
                 </div>
                 <!-- Removed Departamento field -->
                 <div class="flex justify-end gap-3">
@@ -595,7 +595,7 @@
                     nome: employeeData.nome,
                     matricula: employeeData.matricula,
                     cargo: employeeData.cargo,
-                    dataAdmissao: employeeData.dataAdmissao
+                    dataAdmissao: employeeData.dataAdmissao || '' // Save as empty string if not provided
                 });
                 displayMessage(`Funcionário "${employeeData.nome}" (Matrícula: ${employeeData.matricula}) adicionado com sucesso!`);
                 return true;
@@ -662,7 +662,7 @@
                     nome: newData.nome,
                     matricula: newData.matricula,
                     cargo: newData.cargo,
-                    dataAdmissao: newData.dataAdmissao
+                    dataAdmissao: newData.dataAdmissao || '' // Save as empty string if not provided
                 });
                 displayMessage(`Funcionário "${newData.nome}" (Matrícula: ${newData.matricula}) atualizado com sucesso!`);
                 return true;
@@ -680,9 +680,9 @@
             // Ensure dataAdmissao is a valid date string
             const admissionDate = new Date(employee.dataAdmissao);
             const today = new Date();
-            let timeInCompany = 'N/A';
+            let timeInCompany = 'Não informado'; // Default for N/A date
 
-            if (!isNaN(admissionDate.getTime())) { // Check if date is valid
+            if (employee.dataAdmissao && !isNaN(admissionDate.getTime())) { // Check if date is provided and valid
                 const timeDiff = Math.abs(today.getTime() - admissionDate.getTime());
                 const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
 
@@ -705,8 +705,7 @@
                     <p><strong>Nome:</strong> ${employee.nome}</p>
                     <p><strong>Matrícula:</strong> ${employee.matricula}</p>
                     <p><strong>Cargo:</strong> ${employee.cargo}</p>
-                    <!-- Removed Departamento display -->
-                    <p><strong>Data de Admissão:</strong> ${!isNaN(admissionDate.getTime()) ? admissionDate.toLocaleDateString('pt-BR') : 'Data inválida'}</p>
+                    <p><strong>Data de Admissão:</strong> ${employee.dataAdmissao ? new Date(employee.dataAdmissao).toLocaleDateString('pt-BR') : 'Não informado'}</p>
                     <p><strong>Tempo na Empresa:</strong> ${timeInCompany}</p>
                     <div class="flex gap-2 mt-4">
                         <button id="edit-employee-dossier-btn" data-matricula="${employee.matricula}" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out shadow-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-75">
@@ -757,10 +756,13 @@
                 let valA = a[currentSortField];
                 let valB = b[currentSortField];
 
-                // Handle date sorting
+                // Handle date sorting (empty dates come first when sorting ascending)
                 if (currentSortField === 'dataAdmissao') {
-                    valA = new Date(valA).getTime();
-                    valB = new Date(valB).getTime();
+                    const dateA = a.dataAdmissao ? new Date(a.dataAdmissao).getTime() : -Infinity; // Empty dates are very old
+                    const dateB = b.dataAdmissao ? new Date(b.dataAdmissao).getTime() : -Infinity;
+                    if (dateA < dateB) return -1;
+                    if (dateA > dateB) return 1;
+                    return 0;
                 } else if (typeof valA === 'string') {
                     valA = valA.toLowerCase();
                     valB = valB.toLowerCase();
@@ -862,18 +864,18 @@
                         "nome": { "type": "STRING" },
                         "matricula": { "type": "STRING" },
                         "cargo": { "type": "STRING", "enum": ["Coletor", "Gari", "Motorista"] }, // Updated schema for cargo
-                        "dataAdmissao": { "type": "STRING" } // YYYY-MM-DD
+                        "dataAdmissao": { "type": "STRING", "nullable": true } // 'nullable: true' for optional
                     },
-                    required: ["nome", "matricula", "cargo", "dataAdmissao"]
+                    required: ["nome", "matricula", "cargo"] // dataAdmissao removed from required
                 };
-                const prompt = `Extraia as informações de funcionário (nome, matrícula, cargo - escolha entre 'Coletor', 'Gari' ou 'Motorista', data de admissão no formato AAAA-MM-DD) da seguinte frase, em português brasileiro: "${transcript}". Se a data de admissão não for clara, tente inferir do contexto ou use uma data padrão como hoje.`;
+                const prompt = `Extraia as informações de funcionário (nome, matrícula, cargo - escolha entre 'Coletor', 'Gari' ou 'Motorista', data de admissão no formato AAAA-MM-DD) da seguinte frase, em português brasileiro: "${transcript}". Se a data de admissão não for clara ou não for mencionada, ignore-a.`; // Updated prompt
                 try {
                     const parsedData = await callGeminiAPI(prompt, schema);
 
-                    if (parsedData && parsedData.nome && parsedData.matricula && parsedData.cargo && parsedData.dataAdmissao) {
-                        // Basic date validation
-                        if (isNaN(new Date(parsedData.dataAdmissao).getTime())) {
-                            displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD.");
+                    if (parsedData && parsedData.nome && parsedData.matricula && parsedData.cargo) { // Check only required fields
+                        // Only validate dataAdmissao if it's provided
+                        if (parsedData.dataAdmissao && isNaN(new Date(parsedData.dataAdmissao).getTime())) {
+                            displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD ou deixe em branco.");
                             return;
                         }
                         // Validate cargo against allowed options
@@ -884,7 +886,7 @@
                         }
                         await addEmployee(parsedData);
                     } else {
-                        displayError("Não consegui extrair todas as informações essenciais (Nome, Matrícula, Cargo, Data de Admissão). Por favor, tente novamente com mais detalhes.");
+                        displayError("Não consegui extrair todas as informações essenciais (Nome, Matrícula, Cargo). Por favor, tente novamente com mais detalhes.");
                     }
                 } catch (error) {
                     // Error already displayed by callGeminiAPI
@@ -910,15 +912,16 @@
                 nome: addNomeInput.value,
                 matricula: addMatriculaInput.value,
                 cargo: addCargoInput.value, // Read value from select
-                dataAdmissao: addDataAdmissaoInput.value
+                dataAdmissao: addDataAdmissaoInput.value // Can be empty
             };
 
-            if (!employeeData.nome || !employeeData.matricula || !employeeData.cargo || !employeeData.dataAdmissao) {
-                displayError("Por favor, preencha todos os campos obrigatórios (Nome, Matrícula, Cargo, Data de Admissão).");
+            if (!employeeData.nome || !employeeData.matricula || !employeeData.cargo) { // Data de Admissão is now optional
+                displayError("Por favor, preencha todos os campos obrigatórios (Nome, Matrícula, Cargo).");
                 return;
             }
-            if (isNaN(new Date(employeeData.dataAdmissao).getTime())) {
-                displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD.");
+            // Only validate if dataAdmissao is provided
+            if (employeeData.dataAdmissao && isNaN(new Date(employeeData.dataAdmissao).getTime())) {
+                displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD ou deixe em branco.");
                 return;
             }
 
@@ -1104,15 +1107,16 @@
                 nome: editNomeInput.value,
                 matricula: editMatriculaInput.value,
                 cargo: editCargoInput.value, // Read value from select
-                dataAdmissao: editDataAdmissaoInput.value
+                dataAdmissao: editDataAdmissaoInput.value || '' // Can be empty
             };
 
-            if (!updatedData.nome || !updatedData.matricula || !updatedData.cargo || !updatedData.dataAdmissao) {
-                displayError("Por favor, preencha todos os campos obrigatórios (Nome, Matrícula, Cargo, Data de Admissão).");
+            if (!updatedData.nome || !updatedData.matricula || !updatedData.cargo) { // Data de Admissão is now optional
+                displayError("Por favor, preencha todos os campos obrigatórios (Nome, Matrícula, Cargo).");
                 return;
             }
-            if (isNaN(new Date(updatedData.dataAdmissao).getTime())) {
-                displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD.");
+            // Only validate if dataAdmissao is provided
+            if (updatedData.dataAdmissao && isNaN(new Date(updatedData.dataAdmissao).getTime())) {
+                displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD ou deixe em branco.");
                 return;
             }
 
