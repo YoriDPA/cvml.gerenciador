@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Funcionários por Voz e Botões</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        /* Custom scrollbar for output area */
+        .overflow-y-auto::-webkit-scrollbar {
+            width: 8px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-track {
+            background: #e5e7eb;
+            border-radius: 10px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: #9ca3af;
+            border-radius: 10px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        /* Simple spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl border border-gray-200">
+        <h1 class="text-3xl font-bold text-center mb-6 text-indigo-700">Gerenciador de Funcionários</h1>
+
+        <!-- User ID Display -->
+        <div id="user-info" class="text-sm text-gray-600 text-center mb-4">
+            ID do Usuário: <span id="user-id-display" class="font-medium text-indigo-500">Carregando...</span>
+        </div>
+
+        <!-- Input and Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+            <button id="add-employee-voice-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75">
+                <i class="fas fa-microphone mr-2"></i> Adicionar Funcionário (Voz)
+            </button>
+            <button id="list-employees-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75">
+                <i class="fas fa-list mr-2"></i> Listar Funcionários
+            </button>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+            <button id="search-employee-voice-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+                <i class="fas fa-search mr-2"></i> Buscar Funcionário (Voz)
+            </button>
+            <button id="delete-employee-voice-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
+                <i class="fas fa-trash-alt mr-2"></i> Excluir Funcionário (Voz)
+            </button>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading-spinner" class="hidden flex justify-center items-center my-4">
+            <div class="spinner"></div>
+            <p class="ml-3 text-gray-700">Processando...</p>
+        </div>
+
+        <!-- Error Message Display -->
+        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">Erro!</strong>
+            <span class="block sm:inline" id="error-text"></span>
+        </div>
+
+        <!-- Output Area -->
+        <div id="output" class="bg-gray-100 p-4 rounded-lg h-96 overflow-y-auto text-gray-800 border border-gray-300 shadow-inner">
+            <p class="text-center text-gray-500">Use os botões para interagir com o programa.</p>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800" id="modal-title">Confirmação</h3>
+            <p class="text-gray-700 mb-6" id="modal-message">Você tem certeza?</p>
+            <div class="flex justify-end gap-3">
+                <button id="modal-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">Cancelar</button>
+                <button id="modal-confirm-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let db;
+        let auth;
+        let userId;
+        let employeesCollectionRef;
+
+        const outputDiv = document.getElementById('output');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const errorMessageDiv = document.getElementById('error-message');
+        const errorTextSpan = document.getElementById('error-text');
+        const userIdDisplay = document.getElementById('user-id-display');
+
+        const addEmployeeVoiceBtn = document.getElementById('add-employee-voice-btn');
+        const listEmployeesBtn = document.getElementById('list-employees-btn');
+        const searchEmployeeVoiceBtn = document.getElementById('search-employee-voice-btn');
+        const deleteEmployeeVoiceBtn = document.getElementById('delete-employee-voice-btn');
+
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+
+        let recognition; // Web Speech API SpeechRecognition object
+
+        // --- Firebase Initialization and Authentication ---
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Sign in with custom token if available, otherwise anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // Listen for auth state changes
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = userId;
+                        // Set up the employees collection path
+                        employeesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/employees`);
+                        displayMessage("Firebase inicializado e usuário autenticado. Pronto para operar!");
+                        setupRealtimeListener(); // Start listening for employee changes
+                    } else {
+                        userId = null;
+                        userIdDisplay.textContent = 'Não autenticado';
+                        displayError("Falha na autenticação do Firebase. Tente novamente.");
+                    }
+                });
+            } catch (error) {
+                console.error("Erro ao inicializar Firebase:", error);
+                displayError(`Erro ao inicializar Firebase: ${error.message}`);
+            }
+        }
+
+        // --- Utility Functions ---
+        function showLoading() {
+            loadingSpinner.classList.remove('hidden');
+            outputDiv.innerHTML = '<p class="text-center text-gray-500">Processando seu pedido...</p>';
+            hideError();
+        }
+
+        function hideLoading() {
+            loadingSpinner.classList.add('hidden');
+        }
+
+        function displayMessage(message, isHtml = false) {
+            hideLoading();
+            hideError();
+            if (isHtml) {
+                outputDiv.innerHTML = message;
+            } else {
+                outputDiv.innerHTML = `<p>${message}</p>`;
+            }
+            outputDiv.scrollTop = outputDiv.scrollHeight; // Scroll to bottom
+        }
+
+        function displayError(message) {
+            hideLoading();
+            errorMessageDiv.classList.remove('hidden');
+            errorTextSpan.textContent = message;
+            outputDiv.innerHTML = `<p class="text-red-600 font-semibold">${message}</p>`; // Also display in output
+        }
+
+        function hideError() {
+            errorMessageDiv.classList.add('hidden');
+            errorTextSpan.textContent = '';
+        }
+
+        // Show confirmation modal
+        function showConfirmationModal(title, message, onConfirm) {
+            confirmationModal.classList.remove('hidden');
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+
+            // Clear previous listeners
+            modalConfirmBtn.onclick = null;
+            modalCancelBtn.onclick = null;
+
+            modalConfirmBtn.onclick = () => {
+                confirmationModal.classList.add('hidden');
+                onConfirm(true);
+            };
+            modalCancelBtn.onclick = () => {
+                confirmationModal.classList.add('hidden');
+                onConfirm(false);
+            };
+        }
+
+        // Exponential backoff for API calls
+        async function fetchWithBackoff(url, options, retries = 5, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return response;
+                    } else if (response.status === 429 || response.status >= 500) {
+                        // Too many requests or server error, retry
+                        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+                    } else {
+                        // Other client errors, don't retry
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+                    }
+                } catch (error) {
+                    if (i === retries - 1) throw error; // Re-throw if last retry
+                    await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+                }
+            }
+        }
+
+        // --- Web Speech API (Voice Recognition) ---
+        function startVoiceRecognition(callback) {
+            if (!('webkitSpeechRecognition' in window)) {
+                displayError("Desculpe, seu navegador não suporta reconhecimento de voz. Por favor, use Chrome.");
+                return;
+            }
+
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false; // Only one result per recognition
+            recognition.lang = 'pt-BR'; // Set language to Brazilian Portuguese
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                displayMessage("Ouvindo... por favor, fale seu comando.");
+                addEmployeeVoiceBtn.textContent = 'Ouvindo...';
+                addEmployeeVoiceBtn.classList.add('bg-orange-500');
+                addEmployeeVoiceBtn.classList.remove('bg-indigo-600');
+                searchEmployeeVoiceBtn.textContent = 'Ouvindo...';
+                searchEmployeeVoiceBtn.classList.add('bg-orange-500');
+                searchEmployeeVoiceBtn.classList.remove('bg-blue-600');
+                deleteEmployeeVoiceBtn.textContent = 'Ouvindo...';
+                deleteEmployeeVoiceBtn.classList.add('bg-orange-500');
+                deleteEmployeeVoiceBtn.classList.remove('bg-red-600');
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                displayMessage(`Você disse: "${transcript}". Processando...`);
+                callback(transcript);
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Erro no reconhecimento de voz:', event.error);
+                if (event.error === 'no-speech') {
+                    displayError('Nenhuma fala detectada. Por favor, tente novamente.');
+                } else if (event.error === 'not-allowed') {
+                    displayError('Permissão para microfone negada. Por favor, habilite nas configurações do navegador.');
+                } else {
+                    displayError(`Erro no reconhecimento de voz: ${event.error}`);
+                }
+                resetVoiceButtons();
+            };
+
+            recognition.onend = () => {
+                resetVoiceButtons();
+            };
+
+            recognition.start();
+        }
+
+        function resetVoiceButtons() {
+            addEmployeeVoiceBtn.textContent = 'Adicionar Funcionário (Voz)';
+            addEmployeeVoiceBtn.classList.remove('bg-orange-500');
+            addEmployeeVoiceBtn.classList.add('bg-indigo-600');
+            searchEmployeeVoiceBtn.textContent = 'Buscar Funcionário (Voz)';
+            searchEmployeeVoiceBtn.classList.remove('bg-orange-500');
+            searchEmployeeVoiceBtn.classList.add('bg-blue-600');
+            deleteEmployeeVoiceBtn.textContent = 'Excluir Funcionário (Voz)';
+            deleteEmployeeVoiceBtn.classList.remove('bg-orange-500');
+            deleteEmployeeVoiceBtn.classList.add('bg-red-600');
+        }
+
+        // --- LLM (Gemini API) Integration ---
+        async function callGeminiAPI(prompt, schema = null) {
+            showLoading();
+            try {
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+                let payload = { contents: chatHistory };
+                if (schema) {
+                    payload.generationConfig = {
+                        responseMimeType: "application/json",
+                        responseSchema: schema
+                    };
+                }
+
+                const apiKey = ""; // Canvas will provide this if empty
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const response = await fetchWithBackoff(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const textResponse = result.candidates[0].content.parts[0].text;
+                    if (schema) {
+                        return JSON.parse(textResponse);
+                    }
+                    return textResponse;
+                } else {
+                    throw new Error("Resposta da API Gemini inesperada ou vazia.");
+                }
+            } catch (error) {
+                console.error("Erro ao chamar API Gemini:", error);
+                displayError(`Falha ao processar comando com a IA: ${error.message}`);
+                throw error; // Re-throw to propagate error for further handling
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // --- Employee Management Functions (Firestore) ---
+        async function addEmployee(employeeData) {
+            showLoading();
+            try {
+                // Check for existing employee with the same 'matricula'
+                const q = query(employeesCollectionRef, where("matricula", "==", employeeData.matricula));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    displayError(`Já existe um funcionário com a matrícula ${employeeData.matricula}.`);
+                    return false;
+                }
+
+                await addDoc(employeesCollectionRef, employeeData);
+                displayMessage(`Funcionário "${employeeData.nome}" (Matrícula: ${employeeData.matricula}) adicionado com sucesso!`);
+                return true;
+            } catch (error) {
+                console.error("Erro ao adicionar funcionário:", error);
+                displayError(`Falha ao adicionar funcionário: ${error.message}`);
+                return false;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function getEmployee(matricula) {
+            showLoading();
+            try {
+                const q = query(employeesCollectionRef, where("matricula", "==", matricula));
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    displayMessage(`Funcionário com matrícula ${matricula} não encontrado.`);
+                    return null;
+                }
+                const docData = querySnapshot.docs[0].data();
+                displayEmployeeDossier(docData);
+                return docData;
+            } catch (error) {
+                console.error("Erro ao buscar funcionário:", error);
+                displayError(`Falha ao buscar funcionário: ${error.message}`);
+                return null;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayEmployeeDossier(employee) {
+            const admissionDate = new Date(employee.dataAdmissao);
+            const today = new Date();
+            const timeDiff = Math.abs(today.getTime() - admissionDate.getTime());
+            const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+            const years = Math.floor(diffDays / 365);
+            const months = Math.floor((diffDays % 365) / 30); // Approximate months
+            const days = diffDays % 30; // Remaining days
+
+            const timeInCompany = [];
+            if (years > 0) timeInCompany.push(`${years} ano(s)`);
+            if (months > 0) timeInCompany.push(`${months} mês(es)`);
+            if (days > 0) timeInCompany.push(`${days} dia(s)`);
+
+            const dossierHtml = `
+                <div class="bg-blue-50 p-4 rounded-lg shadow-md mb-4">
+                    <h3 class="text-xl font-bold text-blue-800 mb-2">Dossiê do Funcionário</h3>
+                    <p><strong>Nome:</strong> ${employee.nome}</p>
+                    <p><strong>Matrícula:</strong> ${employee.matricula}</p>
+                    <p><strong>Cargo:</strong> ${employee.cargo}</p>
+                    <p><strong>Data de Admissão:</strong> ${new Date(employee.dataAdmissao).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Tempo na Empresa:</strong> ${timeInCompany.join(', ') || 'Menos de um dia'}</p>
+                </div>
+            `;
+            displayMessage(dossierHtml, true);
+        }
+
+        function displayEmployeeList(employees) {
+            if (employees.length === 0) {
+                displayMessage("Nenhum funcionário cadastrado ainda.");
+                return;
+            }
+
+            let listHtml = `
+                <div class="bg-purple-50 p-4 rounded-lg shadow-md mb-4">
+                    <h3 class="text-xl font-bold text-purple-800 mb-2">Lista de Funcionários (${employees.length})</h3>
+                    <ul class="list-disc pl-5">
+            `;
+            employees.forEach(emp => {
+                listHtml += `<li><strong>${emp.nome}</strong> (Matrícula: ${emp.matricula}) - Cargo: ${emp.cargo}</li>`;
+            });
+            listHtml += `
+                    </ul>
+                </div>
+            `;
+            displayMessage(listHtml, true);
+        }
+
+        async function deleteEmployee(matricula) {
+            showLoading();
+            try {
+                const q = query(employeesCollectionRef, where("matricula", "==", matricula));
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    displayError(`Funcionário com matrícula ${matricula} não encontrado para exclusão.`);
+                    return false;
+                }
+                const docToDelete = querySnapshot.docs[0];
+                await deleteDoc(doc(db, employeesCollectionRef.path, docToDelete.id));
+                displayMessage(`Funcionário com matrícula ${matricula} excluído com sucesso!`);
+                return true;
+            } catch (error) {
+                console.error("Erro ao excluir funcionário:", error);
+                displayError(`Falha ao excluir funcionário: ${error.message}`);
+                return false;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Real-time listener for employee data
+        function setupRealtimeListener() {
+            if (employeesCollectionRef && userId) {
+                onSnapshot(employeesCollectionRef, (snapshot) => {
+                    const employees = [];
+                    snapshot.forEach(doc => {
+                        employees.push({ id: doc.id, ...doc.data() });
+                    });
+                    // Only update the display if the user is currently viewing the list
+                    // or if it's the initial load and no other specific action is in progress
+                    if (document.getElementById('output').innerHTML.includes('Lista de Funcionários') ||
+                        document.getElementById('output').innerHTML.includes('Nenhum funcionário cadastrado')) {
+                        displayEmployeeList(employees);
+                    }
+                }, (error) => {
+                    console.error("Erro no listener em tempo real:", error);
+                    displayError(`Erro ao atualizar lista em tempo real: ${error.message}`);
+                });
+            }
+        }
+
+
+        // --- Event Handlers ---
+        addEmployeeVoiceBtn.addEventListener('click', () => {
+            if (!userId) {
+                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                return;
+            }
+            startVoiceRecognition(async (transcript) => {
+                const schema = {
+                    type: "OBJECT",
+                    properties: {
+                        "nome": { "type": "STRING" },
+                        "matricula": { "type": "STRING" },
+                        "cargo": { "type": "STRING" },
+                        "dataAdmissao": { "type": "STRING" } // YYYY-MM-DD
+                    },
+                    required: ["nome", "matricula", "cargo", "dataAdmissao"]
+                };
+                const prompt = `Extraia as informações de funcionário (nome, matrícula, cargo, data de admissão no formato YYYY-MM-DD) da seguinte frase, em português brasileiro: "${transcript}". Se a data de admissão não for clara, tente inferir do contexto ou use uma data padrão como hoje.`;
+                try {
+                    const parsedData = await callGeminiAPI(prompt, schema);
+
+                    if (parsedData && parsedData.nome && parsedData.matricula && parsedData.cargo && parsedData.dataAdmissao) {
+                        // Basic date validation
+                        if (isNaN(new Date(parsedData.dataAdmissao).getTime())) {
+                            displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD.");
+                            return;
+                        }
+                        await addEmployee(parsedData);
+                    } else {
+                        displayError("Não consegui extrair todas as informações necessárias. Por favor, tente novamente com mais detalhes (Nome, Matrícula, Cargo, Data de Admissão).");
+                    }
+                } catch (error) {
+                    // Error already displayed by callGeminiAPI
+                }
+            });
+        });
+
+        listEmployeesBtn.addEventListener('click', async () => {
+            if (!userId) {
+                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                return;
+            }
+            showLoading();
+            try {
+                const querySnapshot = await getDocs(employeesCollectionRef);
+                const employees = [];
+                querySnapshot.forEach(doc => {
+                    employees.push(doc.data());
+                });
+                displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome))); // Sort by name
+            } catch (error) {
+                console.error("Erro ao listar funcionários:", error);
+                displayError(`Falha ao listar funcionários: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        });
+
+        searchEmployeeVoiceBtn.addEventListener('click', () => {
+            if (!userId) {
+                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                return;
+            }
+            startVoiceRecognition(async (transcript) => {
+                const schema = {
+                    type: "OBJECT",
+                    properties: { "matricula": { "type": "STRING" } },
+                    required: ["matricula"]
+                };
+                const prompt = `Extraia a matrícula do funcionário da seguinte frase, em português brasileiro: "${transcript}". A matrícula deve ser um número ou uma string.`;
+                try {
+                    const parsedData = await callGeminiAPI(prompt, schema);
+                    if (parsedData && parsedData.matricula) {
+                        await getEmployee(parsedData.matricula);
+                    } else {
+                        displayError("Não consegui extrair a matrícula. Por favor, diga a matrícula do funcionário claramente.");
+                    }
+                } catch (error) {
+                    // Error already displayed by callGeminiAPI
+                }
+            });
+        });
+
+        deleteEmployeeVoiceBtn.addEventListener('click', () => {
+            if (!userId) {
+                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                return;
+            }
+            startVoiceRecognition(async (transcript) => {
+                const schema = {
+                    type: "OBJECT",
+                    properties: { "matricula": { "type": "STRING" } },
+                    required: ["matricula"]
+                };
+                const prompt = `Extraia a matrícula do funcionário da seguinte frase, em português brasileiro: "${transcript}". A matrícula deve ser um número ou uma string.`;
+                try {
+                    const parsedData = await callGeminiAPI(prompt, schema);
+                    if (parsedData && parsedData.matricula) {
+                        const matricula = parsedData.matricula;
+                        showConfirmationModal(
+                            "Confirmar Exclusão",
+                            `Tem certeza que deseja excluir o funcionário com matrícula ${matricula}?`,
+                            async (confirmed) => {
+                                if (confirmed) {
+                                    await deleteEmployee(matricula);
+                                } else {
+                                    displayMessage("Exclusão cancelada.");
+                                }
+                            }
+                        );
+                    } else {
+                        displayError("Não consegui extrair a matrícula. Por favor, diga a matrícula do funcionário a ser excluído claramente.");
+                    }
+                } catch (error) {
+                    // Error already displayed by callGeminiAPI
+                }
+            });
+        });
+
+        // Initialize Firebase when the window loads
+        window.onload = initializeFirebase;
+    </script>
+    <!-- Font Awesome for icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+</body>
+</html>
