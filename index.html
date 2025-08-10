@@ -68,9 +68,21 @@
                 <i class="fas fa-plus mr-2"></i> Adicionar Funcionário (Manual)
             </button>
         </div>
+        
+        <!-- New: Filter input and button -->
+        <div class="mb-4">
+            <label for="filter-employee-input" class="block text-sm font-medium text-gray-700 mb-1">Filtrar Funcionários por Nome, Matrícula, Cargo ou Departamento:</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" id="filter-employee-input" placeholder="Digite o termo de busca..." class="form-input flex-grow">
+                <button id="apply-filter-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-75">
+                    <i class="fas fa-filter mr-2"></i> Aplicar Filtro
+                </button>
+            </div>
+        </div>
+
         <div class="flex flex-col sm:flex-row gap-4 mb-4">
             <button id="list-employees-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75">
-                <i class="fas fa-list mr-2"></i> Listar Funcionários
+                <i class="fas fa-list mr-2"></i> Listar Todos os Funcionários
             </button>
         </div>
         <div class="flex flex-col sm:flex-row gap-4 mb-6">
@@ -256,6 +268,10 @@
         const searchEmployeeManualBtn = document.getElementById('search-employee-manual-btn');
         const deleteEmployeeVoiceBtn = document.getElementById('delete-employee-voice-btn');
         const deleteEmployeeManualBtn = document.getElementById('delete-employee-manual-btn');
+
+        // New filter elements
+        const filterEmployeeInput = document.getElementById('filter-employee-input');
+        const applyFilterBtn = document.getElementById('apply-filter-btn');
 
         // Modals
         const confirmationModal = document.getElementById('confirmation-modal');
@@ -730,18 +746,31 @@
             });
         }
 
-        function displayEmployeeList(employees) {
-            if (employees.length === 0) {
-                displayMessage("Nenhum funcionário cadastrado ainda.");
+        function displayEmployeeList(employees, filterTerm = '') {
+            let filteredEmployees = employees;
+            if (filterTerm) {
+                const lowerCaseFilter = filterTerm.toLowerCase();
+                filteredEmployees = employees.filter(emp =>
+                    (emp.nome && emp.nome.toLowerCase().includes(lowerCaseFilter)) ||
+                    (emp.matricula && emp.matricula.toLowerCase().includes(lowerCaseFilter)) ||
+                    (emp.cargo && emp.cargo.toLowerCase().includes(lowerCaseFilter)) ||
+                    (emp.departamento && emp.departamento.toLowerCase().includes(lowerCaseFilter))
+                );
+            }
+
+            if (filteredEmployees.length === 0) {
+                displayMessage(filterTerm ? `Nenhum funcionário encontrado para o termo "${filterTerm}".` : "Nenhum funcionário cadastrado ainda.");
                 return;
             }
 
             let listHtml = `
                 <div class="bg-purple-50 p-4 rounded-lg shadow-md mb-4">
-                    <h3 class="text-xl font-bold text-purple-800 mb-2">Lista de Funcionários (${employees.length})</h3>
+                    <h3 class="text-xl font-bold text-purple-800 mb-2">
+                        ${filterTerm ? `Funcionários Filtrados (${filteredEmployees.length})` : `Lista de Funcionários (${filteredEmployees.length})`}
+                    </h3>
                     <ul class="list-disc pl-5">
             `;
-            employees.forEach(emp => {
+            filteredEmployees.forEach(emp => {
                 listHtml += `<li><strong>${emp.nome}</strong> (Matrícula: ${emp.matricula}) - Cargo: ${emp.cargo} - Depto: ${emp.departamento || 'N/A'}</li>`;
             });
             listHtml += `
@@ -781,11 +810,15 @@
                     snapshot.forEach(doc => {
                         employees.push({ id: doc.id, ...doc.data() });
                     });
+                    // Capture current filter term to re-apply on real-time updates
+                    const currentFilterTerm = filterEmployeeInput.value;
+
                     // Only update the display if the user is currently viewing the list
                     // or if it's the initial load and no other specific action is in progress
                     if (outputDiv.innerHTML.includes('Lista de Funcionários') ||
+                        outputDiv.innerHTML.includes('Funcionários Filtrados') || // Check for filtered list as well
                         outputDiv.innerHTML.includes('Nenhum funcionário cadastrado')) {
-                        displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome)));
+                        displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome)), currentFilterTerm);
                     }
                     // If a specific dossier is currently shown, update it
                     const currentMatriculaInDossier = outputDiv.querySelector('#edit-employee-dossier-btn')?.dataset.matricula;
@@ -891,6 +924,7 @@
         });
 
 
+        // Event listener for List All Employees button
         listEmployeesBtn.addEventListener('click', async () => {
             if (!userId) {
                 displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
@@ -903,7 +937,8 @@
                 querySnapshot.forEach(doc => {
                     employees.push(doc.data());
                 });
-                displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome))); // Sort by name
+                displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome))); // List all, sorted by name
+                filterEmployeeInput.value = ''; // Clear filter input when listing all
             } catch (error) {
                 console.error("Erro ao listar funcionários:", error);
                 displayError(`Falha ao listar funcionários: ${error.message}`);
@@ -911,6 +946,34 @@
                 hideLoading();
             }
         });
+
+        // Event listener for APPLY FILTER button
+        applyFilterBtn.addEventListener('click', async () => {
+            if (!userId) {
+                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                return;
+            }
+            const filterTerm = filterEmployeeInput.value.trim();
+            if (filterTerm === '') {
+                displayError("Por favor, digite um termo para filtrar.");
+                return;
+            }
+            showLoading();
+            try {
+                const querySnapshot = await getDocs(employeesCollectionRef);
+                const employees = [];
+                querySnapshot.forEach(doc => {
+                    employees.push(doc.data());
+                });
+                displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome)), filterTerm); // Apply filter
+            } catch (error) {
+                console.error("Erro ao filtrar funcionários:", error);
+                displayError(`Falha ao filtrar funcionários: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        });
+
 
         searchEmployeeVoiceBtn.addEventListener('click', () => {
             if (!userId) {
