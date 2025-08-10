@@ -52,7 +52,7 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl border border-gray-200 relative">
-        <h1 class="text-3xl font-bold text-center mb-6 text-indigo-700">Gerenciador de Funcionários</h1>
+        <h1 class="text-2xl font-bold text-center mb-6 text-indigo-700">Nilson Alves</h1>
 
         <!-- User ID Display - Moved and styled for less prominence -->
         <div id="user-info" class="absolute top-4 right-4 text-xs text-gray-400">
@@ -69,13 +69,27 @@
             </button>
         </div>
         
-        <!-- New: Filter input and button -->
+        <!-- Filter input (button removed) -->
         <div class="mb-4">
-            <label for="filter-employee-input" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por termo:</label>
+            <label for="filter-employee-input" class="block text-sm font-medium text-gray-700 mb-1">Buscar por Nome, Matrícula ou Cargo:</label>
             <div class="flex flex-col sm:flex-row gap-2">
-                <input type="text" id="filter-employee-input" placeholder="Digite o termo de busca..." class="form-input flex-grow">
-                <button id="apply-filter-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-75">
-                    <i class="fas fa-filter mr-2"></i> Aplicar Filtro
+                <input type="text" id="filter-employee-input" placeholder="Digite para buscar..." class="form-input flex-grow">
+                <!-- Removed "Aplicar Filtro" button -->
+            </div>
+        </div>
+
+        <!-- Sort options -->
+        <div class="mb-4">
+            <label for="sort-by-select" class="block text-sm font-medium text-gray-700 mb-1">Ordenar por:</label>
+            <div class="flex flex-col sm:flex-row gap-2 items-center">
+                <select id="sort-by-select" class="form-input flex-grow">
+                    <option value="nome">Nome</option>
+                    <option value="matricula">Matrícula</option>
+                    <option value="cargo">Cargo</option>
+                    <option value="dataAdmissao">Data de Admissão</option>
+                </select>
+                <button id="sort-direction-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">
+                    <i class="fas fa-sort-alpha-down mr-2" id="sort-icon"></i> Crescente
                 </button>
             </div>
         </div>
@@ -257,9 +271,17 @@
         const deleteEmployeeVoiceBtn = document.getElementById('delete-employee-voice-btn');
         const deleteEmployeeManualBtn = document.getElementById('delete-employee-manual-btn');
 
-        // New filter elements
+        // Filter elements
         const filterEmployeeInput = document.getElementById('filter-employee-input');
-        const applyFilterBtn = document.getElementById('apply-filter-btn');
+        // Removed applyFilterBtn
+
+        // Sort elements
+        const sortBySelect = document.getElementById('sort-by-select');
+        const sortDirectionBtn = document.getElementById('sort-direction-btn');
+        const sortIcon = document.getElementById('sort-icon');
+
+        let currentSortField = 'nome'; // Default sort field
+        let currentSortDirection = 'asc'; // 'asc' for ascending, 'desc' for descending
 
         // Modals
         const confirmationModal = document.getElementById('confirmation-modal');
@@ -274,7 +296,6 @@
         const addMatriculaInput = document.getElementById('add-matricula');
         const addCargoInput = document.getElementById('add-cargo'); // Now a select element
         const addDataAdmissaoInput = document.getElementById('add-dataAdmissao');
-        // Removed addDepartamentoInput
         const cancelAddBtn = document.getElementById('cancel-add-btn');
         const saveAddBtn = document.getElementById('save-add-btn');
 
@@ -285,7 +306,6 @@
         const editMatriculaInput = document.getElementById('edit-matricula');
         const editCargoInput = document.getElementById('edit-cargo'); // Now a select element
         const editDataAdmissaoInput = document.getElementById('edit-dataAdmissao');
-        // Removed editDepartamentoInput
         const cancelEditBtn = document.getElementById('cancel-edit-btn');
         const saveEditBtn = document.getElementById('save-edit-btn');
 
@@ -723,19 +743,60 @@
             });
         }
 
-        function displayEmployeeList(employees, filterTerm = '') {
-            let filteredEmployees = employees;
+        // Modified displayEmployeeList to include sorting and automatic filtering
+        async function displayEmployeeList(employees, filterTerm = '') { // Made async to fetch employees if not provided
+            let processedEmployees = employees;
+
+            // If employees array is not provided, fetch them
+            if (!processedEmployees || processedEmployees.length === 0) {
+                 try {
+                    const querySnapshot = await getDocs(employeesCollectionRef);
+                    processedEmployees = [];
+                    querySnapshot.forEach(doc => {
+                        processedEmployees.push(doc.data());
+                    });
+                } catch (error) {
+                    console.error("Erro ao buscar funcionários para exibição:", error);
+                    displayError(`Falha ao buscar funcionários: ${error.message}`);
+                    return;
+                }
+            }
+
+
             if (filterTerm) {
                 const lowerCaseFilter = filterTerm.toLowerCase();
-                filteredEmployees = employees.filter(emp =>
+                processedEmployees = processedEmployees.filter(emp =>
                     (emp.nome && emp.nome.toLowerCase().includes(lowerCaseFilter)) ||
                     (emp.matricula && emp.matricula.toLowerCase().includes(lowerCaseFilter)) ||
                     (emp.cargo && emp.cargo.toLowerCase().includes(lowerCaseFilter))
-                    // Removed departamento from filter
                 );
             }
 
-            if (filteredEmployees.length === 0) {
+            // Apply sorting
+            processedEmployees.sort((a, b) => {
+                let valA = a[currentSortField];
+                let valB = b[currentSortField];
+
+                // Handle date sorting
+                if (currentSortField === 'dataAdmissao') {
+                    valA = new Date(valA).getTime();
+                    valB = new Date(valB).getTime();
+                } else if (typeof valA === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+
+                if (valA < valB) {
+                    return currentSortDirection === 'asc' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return currentSortDirection === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+
+
+            if (processedEmployees.length === 0) {
                 displayMessage(filterTerm ? `Nenhum funcionário encontrado para o termo "${filterTerm}".` : "Nenhum funcionário cadastrado ainda.");
                 return;
             }
@@ -743,12 +804,12 @@
             let listHtml = `
                 <div class="bg-purple-50 p-4 rounded-lg shadow-md mb-4">
                     <h3 class="text-xl font-bold text-purple-800 mb-2">
-                        ${filterTerm ? `Funcionários Filtrados (${filteredEmployees.length})` : `Lista de Funcionários (${filteredEmployees.length})`}
+                        ${filterTerm ? `Funcionários Filtrados (${processedEmployees.length})` : `Lista de Funcionários (${processedEmployees.length})`}
                     </h3>
                     <ul class="list-disc pl-5">
             `;
-            filteredEmployees.forEach(emp => {
-                listHtml += `<li><strong>${emp.nome}</strong> (Matrícula: ${emp.matricula}) - Cargo: ${emp.cargo}</li>`; // Removed Depto display
+            processedEmployees.forEach(emp => {
+                listHtml += `<li><strong>${emp.nome}</strong> (Matrícula: ${emp.matricula}) - Cargo: ${emp.cargo}</li>`;
             });
             listHtml += `
                     </ul>
@@ -779,7 +840,7 @@
             }
         }
 
-        // Real-time listener for employee data
+        // Real-time listener for employee data - modified to re-apply sort and filter
         function setupRealtimeListener() {
             if (employeesCollectionRef && userId) {
                 onSnapshot(employeesCollectionRef, (snapshot) => {
@@ -787,16 +848,8 @@
                     snapshot.forEach(doc => {
                         employees.push({ id: doc.id, ...doc.data() });
                     });
-                    // Capture current filter term to re-apply on real-time updates
                     const currentFilterTerm = filterEmployeeInput.value;
-
-                    // Only update the display if the user is currently viewing the list
-                    // or if it's the initial load and no other specific action is in progress
-                    if (outputDiv.innerHTML.includes('Lista de Funcionários') ||
-                        outputDiv.innerHTML.includes('Funcionários Filtrados') || // Check for filtered list as well
-                        outputDiv.innerHTML.includes('Nenhum funcionário cadastrado')) {
-                        displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome)), currentFilterTerm);
-                    }
+                    displayEmployeeList(employees, currentFilterTerm); // Re-render with current filter and sort
                     // If a specific dossier is currently shown, update it
                     const currentMatriculaInDossier = outputDiv.querySelector('#edit-employee-dossier-btn')?.dataset.matricula;
                     if (currentMatriculaInDossier) {
@@ -830,11 +883,10 @@
                         "matricula": { "type": "STRING" },
                         "cargo": { "type": "STRING", "enum": ["Coletor", "Gari", "Motorista"] }, // Updated schema for cargo
                         "dataAdmissao": { "type": "STRING" } // YYYY-MM-DD
-                        // Removed departamento from schema
                     },
                     required: ["nome", "matricula", "cargo", "dataAdmissao"]
                 };
-                const prompt = `Extraia as informações de funcionário (nome, matrícula, cargo - escolha entre 'Coletor', 'Gari' ou 'Motorista', data de admissão no formato AAAA-MM-DD) da seguinte frase, em português brasileiro: "${transcript}". Se a data de admissão não for clara, tente inferir do contexto ou use uma data padrão como hoje.`; // Updated prompt
+                const prompt = `Extraia as informações de funcionário (nome, matrícula, cargo - escolha entre 'Coletor', 'Gari' ou 'Motorista', data de admissão no formato AAAA-MM-DD) da seguinte frase, em português brasileiro: "${transcript}". Se a data de admissão não for clara, tente inferir do contexto ou use uma data padrão como hoje.`;
                 try {
                     const parsedData = await callGeminiAPI(prompt, schema);
 
@@ -879,7 +931,6 @@
                 matricula: addMatriculaInput.value,
                 cargo: addCargoInput.value, // Read value from select
                 dataAdmissao: addDataAdmissaoInput.value
-                // Removed departamento from data
             };
 
             if (!employeeData.nome || !employeeData.matricula || !employeeData.cargo || !employeeData.dataAdmissao) {
@@ -916,7 +967,7 @@
                 querySnapshot.forEach(doc => {
                     employees.push(doc.data());
                 });
-                displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome))); // List all, sorted by name
+                displayEmployeeList(employees); // Call with all employees
                 filterEmployeeInput.value = ''; // Clear filter input when listing all
             } catch (error) {
                 console.error("Erro ao listar funcionários:", error);
@@ -926,27 +977,23 @@
             }
         });
 
-        // Event listener for APPLY FILTER button
-        applyFilterBtn.addEventListener('click', async () => {
+        // Event listener for automatic filtering on input
+        filterEmployeeInput.addEventListener('input', async () => {
             if (!userId) {
-                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                // Do not display error, just ignore input if not authenticated
                 return;
             }
             const filterTerm = filterEmployeeInput.value.trim();
-            if (filterTerm === '') {
-                displayError("Por favor, digite um termo para filtrar.");
-                return;
-            }
-            showLoading();
+            showLoading(); // Show loading while fetching/filtering
             try {
                 const querySnapshot = await getDocs(employeesCollectionRef);
                 const employees = [];
                 querySnapshot.forEach(doc => {
                     employees.push(doc.data());
                 });
-                displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome)), filterTerm); // Apply filter
+                displayEmployeeList(employees, filterTerm); // Apply filter automatically
             } catch (error) {
-                console.error("Erro ao filtrar funcionários:", error);
+                console.error("Erro ao filtrar funcionários automaticamente:", error);
                 displayError(`Falha ao filtrar funcionários: ${error.message}`);
             } finally {
                 hideLoading();
@@ -1066,7 +1113,6 @@
             // Set the selected option for cargo
             editCargoInput.value = employeeData.cargo; 
             editDataAdmissaoInput.value = employeeData.dataAdmissao;
-            // Removed editDepartamentoInput
             editNomeInput.focus();
         }
 
@@ -1079,7 +1125,6 @@
                 matricula: editMatriculaInput.value,
                 cargo: editCargoInput.value, // Read value from select
                 dataAdmissao: editDataAdmissaoInput.value
-                // Removed departamento from data
             };
 
             if (!updatedData.nome || !updatedData.matricula || !updatedData.cargo || !updatedData.dataAdmissao) {
