@@ -52,10 +52,10 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl border border-gray-200 relative">
-        <h1 class="text-2xl font-bold text-center mb-6 text-indigo-700">Nilson Alves</h1>
+        <h1 class="text-3xl font-bold text-center mb-6 text-indigo-700">Gerenciador de Funcionários</h1>
 
-        <!-- User ID Display - Moved and styled for less prominence -->
-        <div id="user-info" class="absolute top-4 right-4 text-xs text-gray-400">
+        <!-- User ID Display - Now hidden -->
+        <div id="user-info" class="hidden">
             ID do Usuário: <span id="user-id-display" class="font-medium text-indigo-500">Carregando...</span>
         </div>
 
@@ -78,7 +78,7 @@
             </div>
         </div>
 
-        <!-- Sort options -->
+        <!-- Sort options - Removed sort direction button -->
         <div class="mb-4">
             <label for="sort-by-select" class="block text-sm font-medium text-gray-700 mb-1">Ordenar por:</label>
             <div class="flex flex-col sm:flex-row gap-2 items-center">
@@ -88,9 +88,7 @@
                     <option value="cargo">Cargo</option>
                     <option value="dataAdmissao">Data de Admissão</option>
                 </select>
-                <button id="sort-direction-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">
-                    <i class="fas fa-sort-alpha-down mr-2" id="sort-icon"></i> Crescente
-                </button>
+                <!-- Removed sort direction button -->
             </div>
         </div>
 
@@ -277,11 +275,10 @@
 
         // Sort elements
         const sortBySelect = document.getElementById('sort-by-select');
-        const sortDirectionBtn = document.getElementById('sort-direction-btn');
-        const sortIcon = document.getElementById('sort-icon');
+        // Removed sortDirectionBtn and sortIcon
 
         let currentSortField = 'nome'; // Default sort field
-        let currentSortDirection = 'asc'; // 'asc' for ascending, 'desc' for descending
+        let currentSortDirection = 'asc'; // Always ascending
 
         // Modals
         const confirmationModal = document.getElementById('confirmation-modal');
@@ -743,25 +740,8 @@
             });
         }
 
-        // Modified displayEmployeeList to include sorting and automatic filtering
-        async function displayEmployeeList(employees, filterTerm = '') { // Made async to fetch employees if not provided
-            let processedEmployees = employees;
-
-            // If employees array is not provided, fetch them
-            if (!processedEmployees || processedEmployees.length === 0) {
-                 try {
-                    const querySnapshot = await getDocs(employeesCollectionRef);
-                    processedEmployees = [];
-                    querySnapshot.forEach(doc => {
-                        processedEmployees.push(doc.data());
-                    });
-                } catch (error) {
-                    console.error("Erro ao buscar funcionários para exibição:", error);
-                    displayError(`Falha ao buscar funcionários: ${error.message}`);
-                    return;
-                }
-            }
-
+        function displayEmployeeList(employees, filterTerm = '') {
+            let processedEmployees = [...employees]; // Create a copy to sort
 
             if (filterTerm) {
                 const lowerCaseFilter = filterTerm.toLowerCase();
@@ -772,7 +752,7 @@
                 );
             }
 
-            // Apply sorting
+            // Apply sorting (always ascending)
             processedEmployees.sort((a, b) => {
                 let valA = a[currentSortField];
                 let valB = b[currentSortField];
@@ -787,10 +767,10 @@
                 }
 
                 if (valA < valB) {
-                    return currentSortDirection === 'asc' ? -1 : 1;
+                    return -1; // Always ascending
                 }
                 if (valA > valB) {
-                    return currentSortDirection === 'asc' ? 1 : -1;
+                    return 1; // Always ascending
                 }
                 return 0;
             });
