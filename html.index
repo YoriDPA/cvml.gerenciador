@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciador de Funcionários por Voz e Botões</title>
+    <title>Gerenciador de Funcionários</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Inter -->
@@ -41,6 +41,13 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        /* Modal backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .form-input {
+            @apply mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -53,10 +60,15 @@
         </div>
 
         <!-- Input and Action Buttons -->
-        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
             <button id="add-employee-voice-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75">
                 <i class="fas fa-microphone mr-2"></i> Adicionar Funcionário (Voz)
             </button>
+            <button id="add-employee-manual-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-75">
+                <i class="fas fa-plus mr-2"></i> Adicionar Funcionário (Manual)
+            </button>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
             <button id="list-employees-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75">
                 <i class="fas fa-list mr-2"></i> Listar Funcionários
             </button>
@@ -65,8 +77,16 @@
             <button id="search-employee-voice-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
                 <i class="fas fa-search mr-2"></i> Buscar Funcionário (Voz)
             </button>
+            <button id="search-employee-manual-btn" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-75">
+                <i class="fas fa-search mr-2"></i> Buscar Funcionário (Manual)
+            </button>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
             <button id="delete-employee-voice-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
                 <i class="fas fa-trash-alt mr-2"></i> Excluir Funcionário (Voz)
+            </button>
+            <button id="delete-employee-manual-btn" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-opacity-75">
+                <i class="fas fa-trash-alt mr-2"></i> Excluir Funcionário (Manual)
             </button>
         </div>
 
@@ -89,7 +109,7 @@
     </div>
 
     <!-- Confirmation Modal -->
-    <div id="confirmation-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center hidden">
+    <div id="confirmation-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center hidden modal-backdrop z-50">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
             <h3 class="text-xl font-semibold mb-4 text-gray-800" id="modal-title">Confirmação</h3>
             <p class="text-gray-700 mb-6" id="modal-message">Você tem certeza?</p>
@@ -99,6 +119,103 @@
             </div>
         </div>
     </div>
+
+    <!-- Add Employee Modal -->
+    <div id="add-employee-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center hidden modal-backdrop z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Adicionar Novo Funcionário</h3>
+            <form id="add-employee-form">
+                <div class="mb-4">
+                    <label for="add-nome" class="block text-sm font-medium text-gray-700">Nome Completo</label>
+                    <input type="text" id="add-nome" name="nome" class="form-input" required>
+                </div>
+                <div class="mb-4">
+                    <label for="add-matricula" class="block text-sm font-medium text-gray-700">Matrícula</label>
+                    <input type="text" id="add-matricula" name="matricula" class="form-input" required>
+                </div>
+                <div class="mb-4">
+                    <label for="add-cargo" class="block text-sm font-medium text-gray-700">Cargo</label>
+                    <input type="text" id="add-cargo" name="cargo" class="form-input" required>
+                </div>
+                <div class="mb-4">
+                    <label for="add-dataAdmissao" class="block text-sm font-medium text-gray-700">Data de Admissão (AAAA-MM-DD)</label>
+                    <input type="date" id="add-dataAdmissao" name="dataAdmissao" class="form-input" required>
+                </div>
+                <div class="mb-4">
+                    <label for="add-telefone" class="block text-sm font-medium text-gray-700">Telefone</label>
+                    <input type="text" id="add-telefone" name="telefone" class="form-input">
+                </div>
+                <div class="mb-4">
+                    <label for="add-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="add-email" name="email" class="form-input">
+                </div>
+                <div class="mb-6">
+                    <label for="add-departamento" class="block text-sm font-medium text-gray-700">Departamento</label>
+                    <input type="text" id="add-departamento" name="departamento" class="form-input">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="cancel-add-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">Cancelar</button>
+                    <button type="submit" id="save-add-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Employee Modal -->
+    <div id="edit-employee-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center hidden modal-backdrop z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Editar Funcionário</h3>
+            <form id="edit-employee-form">
+                <input type="hidden" id="edit-originalMatricula">
+                <div class="mb-4">
+                    <label for="edit-nome" class="block text-sm font-medium text-gray-700">Nome Completo</label>
+                    <input type="text" id="edit-nome" name="nome" class="form-input" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit-matricula" class="block text-sm font-medium text-gray-700">Matrícula</label>
+                    <input type="text" id="edit-matricula" name="matricula" class="form-input" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit-cargo" class="block text-sm font-medium text-gray-700">Cargo</label>
+                    <input type="text" id="edit-cargo" name="cargo" class="form-input" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit-dataAdmissao" class="block text-sm font-medium text-gray-700">Data de Admissão (AAAA-MM-DD)</label>
+                    <input type="date" id="edit-dataAdmissao" name="dataAdmissao" class="form-input" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit-telefone" class="block text-sm font-medium text-gray-700">Telefone</label>
+                    <input type="text" id="edit-telefone" name="telefone" class="form-input">
+                </div>
+                <div class="mb-4">
+                    <label for="edit-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="edit-email" name="email" class="form-input">
+                </div>
+                <div class="mb-6">
+                    <label for="edit-departamento" class="block text-sm font-medium text-gray-700">Departamento</label>
+                    <input type="text" id="edit-departamento" name="departamento" class="form-input">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="cancel-edit-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">Cancelar</button>
+                    <button type="submit" id="save-edit-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Prompt Input Modal (for manual search/delete by matricula) -->
+    <div id="prompt-input-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center hidden modal-backdrop z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800" id="prompt-input-title"></h3>
+            <p class="text-gray-700 mb-4" id="prompt-input-message"></p>
+            <input type="text" id="prompt-input-field" class="form-input mb-6" placeholder="Digite a matrícula...">
+            <div class="flex justify-end gap-3">
+                <button id="prompt-input-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">Cancelar</button>
+                <button id="prompt-input-confirm-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Firebase SDKs -->
     <script type="module">
@@ -117,6 +234,7 @@
         let userId;
         let employeesCollectionRef;
 
+        // UI Elements
         const outputDiv = document.getElementById('output');
         const loadingSpinner = document.getElementById('loading-spinner');
         const errorMessageDiv = document.getElementById('error-message');
@@ -124,17 +242,55 @@
         const userIdDisplay = document.getElementById('user-id-display');
 
         const addEmployeeVoiceBtn = document.getElementById('add-employee-voice-btn');
+        const addEmployeeManualBtn = document.getElementById('add-employee-manual-btn'); // New
         const listEmployeesBtn = document.getElementById('list-employees-btn');
         const searchEmployeeVoiceBtn = document.getElementById('search-employee-voice-btn');
+        const searchEmployeeManualBtn = document.getElementById('search-employee-manual-btn'); // New
         const deleteEmployeeVoiceBtn = document.getElementById('delete-employee-voice-btn');
+        const deleteEmployeeManualBtn = document.getElementById('delete-employee-manual-btn'); // New
 
+        // Modals
         const confirmationModal = document.getElementById('confirmation-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
 
+        const addEmployeeModal = document.getElementById('add-employee-modal'); // New
+        const addEmployeeForm = document.getElementById('add-employee-form'); // New
+        const addNomeInput = document.getElementById('add-nome'); // New
+        const addMatriculaInput = document.getElementById('add-matricula'); // New
+        const addCargoInput = document.getElementById('add-cargo'); // New
+        const addDataAdmissaoInput = document.getElementById('add-dataAdmissao'); // New
+        const addTelefoneInput = document.getElementById('add-telefone'); // New
+        const addEmailInput = document.getElementById('add-email'); // New
+        const addDepartamentoInput = document.getElementById('add-departamento'); // New
+        const cancelAddBtn = document.getElementById('cancel-add-btn'); // New
+        const saveAddBtn = document.getElementById('save-add-btn'); // New
+
+        const editEmployeeModal = document.getElementById('edit-employee-modal'); // New
+        const editEmployeeForm = document.getElementById('edit-employee-form'); // New
+        const editOriginalMatriculaInput = document.getElementById('edit-originalMatricula'); // New hidden field
+        const editNomeInput = document.getElementById('edit-nome'); // New
+        const editMatriculaInput = document.getElementById('edit-matricula'); // New
+        const editCargoInput = document.getElementById('edit-cargo'); // New
+        const editDataAdmissaoInput = document.getElementById('edit-dataAdmissao'); // New
+        const editTelefoneInput = document.getElementById('edit-telefone'); // New
+        const editEmailInput = document.getElementById('edit-email'); // New
+        const editDepartamentoInput = document.getElementById('edit-departamento'); // New
+        const cancelEditBtn = document.getElementById('cancel-edit-btn'); // New
+        const saveEditBtn = document.getElementById('save-edit-btn'); // New
+
+        const promptInputModal = document.getElementById('prompt-input-modal'); // New
+        const promptInputTitle = document.getElementById('prompt-input-title'); // New
+        const promptInputMessage = document.getElementById('prompt-input-message'); // New
+        const promptInputField = document.getElementById('prompt-input-field'); // New
+        const promptInputCancelBtn = document.getElementById('prompt-input-cancel-btn'); // New
+        const promptInputConfirmBtn = document.getElementById('prompt-input-confirm-btn'); // New
+
         let recognition; // Web Speech API SpeechRecognition object
+        let currentOnConfirmPromptInput = null; // Callback for prompt input modal
+
 
         // --- Firebase Initialization and Authentication ---
         async function initializeFirebase() {
@@ -205,9 +361,20 @@
             errorTextSpan.textContent = '';
         }
 
+        // General Modal Open/Close
+        function openModal(modalElement) {
+            modalElement.classList.remove('hidden');
+            modalElement.classList.add('flex'); // Ensure flex for centering
+        }
+
+        function closeModal(modalElement) {
+            modalElement.classList.add('hidden');
+            modalElement.classList.remove('flex');
+        }
+
         // Show confirmation modal
         function showConfirmationModal(title, message, onConfirm) {
-            confirmationModal.classList.remove('hidden');
+            openModal(confirmationModal);
             modalTitle.textContent = title;
             modalMessage.textContent = message;
 
@@ -216,12 +383,36 @@
             modalCancelBtn.onclick = null;
 
             modalConfirmBtn.onclick = () => {
-                confirmationModal.classList.add('hidden');
+                closeModal(confirmationModal);
                 onConfirm(true);
             };
             modalCancelBtn.onclick = () => {
-                confirmationModal.classList.add('hidden');
+                closeModal(confirmationModal);
                 onConfirm(false);
+            };
+        }
+
+        // Show prompt input modal
+        function showPromptInputModal(title, message, onConfirm) {
+            openModal(promptInputModal);
+            promptInputTitle.textContent = title;
+            promptInputMessage.textContent = message;
+            promptInputField.value = ''; // Clear previous input
+            promptInputField.focus(); // Focus on input field
+
+            currentOnConfirmPromptInput = onConfirm; // Store callback
+
+            // Clear previous listeners
+            promptInputConfirmBtn.onclick = null;
+            promptInputCancelBtn.onclick = null;
+
+            promptInputConfirmBtn.onclick = () => {
+                closeModal(promptInputModal);
+                currentOnConfirmPromptInput(promptInputField.value);
+            };
+            promptInputCancelBtn.onclick = () => {
+                closeModal(promptInputModal);
+                currentOnConfirmPromptInput(null); // Or false, depending on desired behavior
             };
         }
 
@@ -261,15 +452,20 @@
 
             recognition.onstart = () => {
                 displayMessage("Ouvindo... por favor, fale seu comando.");
-                addEmployeeVoiceBtn.textContent = 'Ouvindo...';
-                addEmployeeVoiceBtn.classList.add('bg-orange-500');
-                addEmployeeVoiceBtn.classList.remove('bg-indigo-600');
-                searchEmployeeVoiceBtn.textContent = 'Ouvindo...';
-                searchEmployeeVoiceBtn.classList.add('bg-orange-500');
-                searchEmployeeVoiceBtn.classList.remove('bg-blue-600');
-                deleteEmployeeVoiceBtn.textContent = 'Ouvindo...';
-                deleteEmployeeVoiceBtn.classList.add('bg-orange-500');
-                deleteEmployeeVoiceBtn.classList.remove('bg-red-600');
+                // Update specific voice buttons based on which one was clicked
+                if (addEmployeeVoiceBtn.classList.contains('bg-indigo-600')) {
+                    addEmployeeVoiceBtn.textContent = 'Ouvindo...';
+                    addEmployeeVoiceBtn.classList.add('bg-orange-500');
+                    addEmployeeVoiceBtn.classList.remove('bg-indigo-600');
+                } else if (searchEmployeeVoiceBtn.classList.contains('bg-blue-600')) {
+                    searchEmployeeVoiceBtn.textContent = 'Ouvindo...';
+                    searchEmployeeVoiceBtn.classList.add('bg-orange-500');
+                    searchEmployeeVoiceBtn.classList.remove('bg-blue-600');
+                } else if (deleteEmployeeVoiceBtn.classList.contains('bg-red-600')) {
+                    deleteEmployeeVoiceBtn.textContent = 'Ouvindo...';
+                    deleteEmployeeVoiceBtn.classList.add('bg-orange-500');
+                    deleteEmployeeVoiceBtn.classList.remove('bg-red-600');
+                }
             };
 
             recognition.onresult = (event) => {
@@ -340,7 +536,13 @@
                     result.candidates[0].content.parts.length > 0) {
                     const textResponse = result.candidates[0].content.parts[0].text;
                     if (schema) {
-                        return JSON.parse(textResponse);
+                        try {
+                            return JSON.parse(textResponse);
+                        } catch (e) {
+                            console.error("Erro ao fazer parse do JSON da API Gemini:", e);
+                            displayError("A IA retornou um formato de dados inválido.");
+                            throw e;
+                        }
                     }
                     return textResponse;
                 } else {
@@ -367,7 +569,16 @@
                     return false;
                 }
 
-                await addDoc(employeesCollectionRef, employeeData);
+                // Add document with expanded fields
+                await addDoc(employeesCollectionRef, {
+                    nome: employeeData.nome,
+                    matricula: employeeData.matricula,
+                    cargo: employeeData.cargo,
+                    dataAdmissao: employeeData.dataAdmissao,
+                    telefone: employeeData.telefone || '', // Add new fields with default empty string
+                    email: employeeData.email || '',
+                    departamento: employeeData.departamento || ''
+                });
                 displayMessage(`Funcionário "${employeeData.nome}" (Matrícula: ${employeeData.matricula}) adicionado com sucesso!`);
                 return true;
             } catch (error) {
@@ -388,9 +599,11 @@
                     displayMessage(`Funcionário com matrícula ${matricula} não encontrado.`);
                     return null;
                 }
+                // Get the document ID for future updates/deletes if needed directly
+                const docId = querySnapshot.docs[0].id;
                 const docData = querySnapshot.docs[0].data();
-                displayEmployeeDossier(docData);
-                return docData;
+                displayEmployeeDossier({ ...docData, id: docId }); // Pass docId along with data
+                return { ...docData, id: docId };
             } catch (error) {
                 console.error("Erro ao buscar funcionário:", error);
                 displayError(`Falha ao buscar funcionário: ${error.message}`);
@@ -400,19 +613,75 @@
             }
         }
 
+        // New function: Update Employee
+        async function updateEmployee(originalMatricula, newData) {
+            showLoading();
+            try {
+                // Find the document using the original matricula
+                const q = query(employeesCollectionRef, where("matricula", "==", originalMatricula));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    displayError(`Funcionário com matrícula ${originalMatricula} não encontrado para atualização.`);
+                    return false;
+                }
+
+                const docToUpdate = querySnapshot.docs[0];
+                const docRef = doc(db, employeesCollectionRef.path, docToUpdate.id);
+
+                // If matricula was changed, ensure the new one doesn't exist
+                if (originalMatricula !== newData.matricula) {
+                    const checkNewMatriculaQ = query(employeesCollectionRef, where("matricula", "==", newData.matricula));
+                    const checkSnapshot = await getDocs(checkNewMatriculaQ);
+                    if (!checkSnapshot.empty) {
+                        displayError(`A nova matrícula "${newData.matricula}" já está em uso por outro funcionário.`);
+                        return false;
+                    }
+                }
+
+                await updateDoc(docRef, {
+                    nome: newData.nome,
+                    matricula: newData.matricula,
+                    cargo: newData.cargo,
+                    dataAdmissao: newData.dataAdmissao,
+                    telefone: newData.telefone || '',
+                    email: newData.email || '',
+                    departamento: newData.departamento || ''
+                });
+                displayMessage(`Funcionário "${newData.nome}" (Matrícula: ${newData.matricula}) atualizado com sucesso!`);
+                return true;
+            } catch (error) {
+                console.error("Erro ao atualizar funcionário:", error);
+                displayError(`Falha ao atualizar funcionário: ${error.message}`);
+                return false;
+            } finally {
+                hideLoading();
+            }
+        }
+
+
         function displayEmployeeDossier(employee) {
+            // Ensure dataAdmissao is a valid date string
             const admissionDate = new Date(employee.dataAdmissao);
             const today = new Date();
-            const timeDiff = Math.abs(today.getTime() - admissionDate.getTime());
-            const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-            const years = Math.floor(diffDays / 365);
-            const months = Math.floor((diffDays % 365) / 30); // Approximate months
-            const days = diffDays % 30; // Remaining days
+            let timeInCompany = 'N/A';
 
-            const timeInCompany = [];
-            if (years > 0) timeInCompany.push(`${years} ano(s)`);
-            if (months > 0) timeInCompany.push(`${months} mês(es)`);
-            if (days > 0) timeInCompany.push(`${days} dia(s)`);
+            if (!isNaN(admissionDate.getTime())) { // Check if date is valid
+                const timeDiff = Math.abs(today.getTime() - admissionDate.getTime());
+                const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+
+                const years = Math.floor(diffDays / 365);
+                const remainingDaysAfterYears = diffDays % 365;
+                const months = Math.floor(remainingDaysAfterYears / 30.4375); // Average days in a month
+                const days = Math.floor(remainingDaysAfterYears % 30.4375);
+
+                const parts = [];
+                if (years > 0) parts.push(`${years} ano(s)`);
+                if (months > 0) parts.push(`${months} mês(es)`);
+                if (days > 0) parts.push(`${days} dia(s)`);
+                timeInCompany = parts.join(', ') || 'Menos de um dia';
+            }
+
 
             const dossierHtml = `
                 <div class="bg-blue-50 p-4 rounded-lg shadow-md mb-4">
@@ -420,11 +689,41 @@
                     <p><strong>Nome:</strong> ${employee.nome}</p>
                     <p><strong>Matrícula:</strong> ${employee.matricula}</p>
                     <p><strong>Cargo:</strong> ${employee.cargo}</p>
-                    <p><strong>Data de Admissão:</strong> ${new Date(employee.dataAdmissao).toLocaleDateString('pt-BR')}</p>
-                    <p><strong>Tempo na Empresa:</strong> ${timeInCompany.join(', ') || 'Menos de um dia'}</p>
+                    <p><strong>Departamento:</strong> ${employee.departamento || 'Não informado'}</p>
+                    <p><strong>Data de Admissão:</strong> ${!isNaN(admissionDate.getTime()) ? admissionDate.toLocaleDateString('pt-BR') : 'Data inválida'}</p>
+                    <p><strong>Tempo na Empresa:</strong> ${timeInCompany}</p>
+                    <p><strong>Telefone:</strong> ${employee.telefone || 'Não informado'}</p>
+                    <p><strong>Email:</strong> ${employee.email || 'Não informado'}</p>
+                    <div class="flex gap-2 mt-4">
+                        <button id="edit-employee-dossier-btn" data-matricula="${employee.matricula}" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out shadow-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-75">
+                            <i class="fas fa-edit mr-2"></i> Editar
+                        </button>
+                        <button id="delete-employee-dossier-btn" data-matricula="${employee.matricula}" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
+                            <i class="fas fa-trash-alt mr-2"></i> Excluir
+                        </button>
+                    </div>
                 </div>
             `;
             displayMessage(dossierHtml, true);
+
+            // Add event listeners to the new buttons within the output
+            document.getElementById('edit-employee-dossier-btn').addEventListener('click', () => {
+                openEditEmployeeModal(employee);
+            });
+            document.getElementById('delete-employee-dossier-btn').addEventListener('click', () => {
+                const matriculaToDelete = employee.matricula;
+                showConfirmationModal(
+                    "Confirmar Exclusão",
+                    `Tem certeza que deseja excluir o funcionário com matrícula ${matriculaToDelete}?`,
+                    async (confirmed) => {
+                        if (confirmed) {
+                            await deleteEmployee(matriculaToDelete);
+                        } else {
+                            displayMessage("Exclusão cancelada.");
+                        }
+                    }
+                );
+            });
         }
 
         function displayEmployeeList(employees) {
@@ -439,7 +738,7 @@
                     <ul class="list-disc pl-5">
             `;
             employees.forEach(emp => {
-                listHtml += `<li><strong>${emp.nome}</strong> (Matrícula: ${emp.matricula}) - Cargo: ${emp.cargo}</li>`;
+                listHtml += `<li><strong>${emp.nome}</strong> (Matrícula: ${emp.matricula}) - Cargo: ${emp.cargo} - Depto: ${emp.departamento || 'N/A'}</li>`;
             });
             listHtml += `
                     </ul>
@@ -480,10 +779,21 @@
                     });
                     // Only update the display if the user is currently viewing the list
                     // or if it's the initial load and no other specific action is in progress
-                    if (document.getElementById('output').innerHTML.includes('Lista de Funcionários') ||
-                        document.getElementById('output').innerHTML.includes('Nenhum funcionário cadastrado')) {
-                        displayEmployeeList(employees);
+                    if (outputDiv.innerHTML.includes('Lista de Funcionários') ||
+                        outputDiv.innerHTML.includes('Nenhum funcionário cadastrado')) {
+                        displayEmployeeList(employees.sort((a, b) => a.nome.localeCompare(b.nome)));
                     }
+                    // If a specific dossier is currently shown, update it
+                    const currentMatriculaInDossier = outputDiv.querySelector('#edit-employee-dossier-btn')?.dataset.matricula;
+                    if (currentMatriculaInDossier) {
+                        const updatedEmployee = employees.find(emp => emp.matricula === currentMatriculaInDossier);
+                        if (updatedEmployee) {
+                            displayEmployeeDossier(updatedEmployee); // Re-render with updated data
+                        } else {
+                            displayMessage(`O funcionário com matrícula ${currentMatriculaInDossier} foi removido.`);
+                        }
+                    }
+
                 }, (error) => {
                     console.error("Erro no listener em tempo real:", error);
                     displayError(`Erro ao atualizar lista em tempo real: ${error.message}`);
@@ -505,11 +815,14 @@
                         "nome": { "type": "STRING" },
                         "matricula": { "type": "STRING" },
                         "cargo": { "type": "STRING" },
-                        "dataAdmissao": { "type": "STRING" } // YYYY-MM-DD
+                        "dataAdmissao": { "type": "STRING" }, // YYYY-MM-DD
+                        "telefone": { "type": "STRING", "nullable": true },
+                        "email": { "type": "STRING", "nullable": true },
+                        "departamento": { "type": "STRING", "nullable": true }
                     },
                     required: ["nome", "matricula", "cargo", "dataAdmissao"]
                 };
-                const prompt = `Extraia as informações de funcionário (nome, matrícula, cargo, data de admissão no formato YYYY-MM-DD) da seguinte frase, em português brasileiro: "${transcript}". Se a data de admissão não for clara, tente inferir do contexto ou use uma data padrão como hoje.`;
+                const prompt = `Extraia as informações de funcionário (nome, matrícula, cargo, data de admissão no formato AAAA-MM-DD, telefone, email, departamento) da seguinte frase, em português brasileiro: "${transcript}". Se a data de admissão não for clara, tente inferir do contexto ou use uma data padrão como hoje. Se telefone, email ou departamento não forem mencionados, use nulo.`;
                 try {
                     const parsedData = await callGeminiAPI(prompt, schema);
 
@@ -521,13 +834,58 @@
                         }
                         await addEmployee(parsedData);
                     } else {
-                        displayError("Não consegui extrair todas as informações necessárias. Por favor, tente novamente com mais detalhes (Nome, Matrícula, Cargo, Data de Admissão).");
+                        displayError("Não consegui extrair todas as informações essenciais (Nome, Matrícula, Cargo, Data de Admissão). Por favor, tente novamente com mais detalhes.");
                     }
                 } catch (error) {
                     // Error already displayed by callGeminiAPI
                 }
             });
         });
+
+        // Event listener for manual add employee button
+        addEmployeeManualBtn.addEventListener('click', () => {
+            if (!userId) {
+                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                return;
+            }
+            openModal(addEmployeeModal);
+            addEmployeeForm.reset(); // Clear form fields
+            addNomeInput.focus(); // Focus on the first input
+        });
+
+        // Event listener for saving manual add employee form
+        addEmployeeForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent default form submission
+            const employeeData = {
+                nome: addNomeInput.value,
+                matricula: addMatriculaInput.value,
+                cargo: addCargoInput.value,
+                dataAdmissao: addDataAdmissaoInput.value,
+                telefone: addTelefoneInput.value,
+                email: addEmailInput.value,
+                departamento: addDepartamentoInput.value
+            };
+
+            if (!employeeData.nome || !employeeData.matricula || !employeeData.cargo || !employeeData.dataAdmissao) {
+                displayError("Por favor, preencha todos os campos obrigatórios (Nome, Matrícula, Cargo, Data de Admissão).");
+                return;
+            }
+            if (isNaN(new Date(employeeData.dataAdmissao).getTime())) {
+                displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD.");
+                return;
+            }
+
+            const success = await addEmployee(employeeData);
+            if (success) {
+                closeModal(addEmployeeModal);
+            }
+        });
+
+        // Event listener for canceling manual add employee form
+        cancelAddBtn.addEventListener('click', () => {
+            closeModal(addEmployeeModal);
+        });
+
 
         listEmployeesBtn.addEventListener('click', async () => {
             if (!userId) {
@@ -575,6 +933,22 @@
             });
         });
 
+        // Event listener for manual search employee button
+        searchEmployeeManualBtn.addEventListener('click', () => {
+            if (!userId) {
+                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                return;
+            }
+            showPromptInputModal("Buscar Funcionário", "Digite a matrícula do funcionário que deseja buscar:", async (matricula) => {
+                if (matricula) {
+                    await getEmployee(matricula);
+                } else {
+                    displayMessage("Busca de funcionário cancelada ou matrícula não fornecida.");
+                }
+            });
+        });
+
+
         deleteEmployeeVoiceBtn.addEventListener('click', () => {
             if (!userId) {
                 displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
@@ -610,6 +984,81 @@
                 }
             });
         });
+
+        // Event listener for manual delete employee button
+        deleteEmployeeManualBtn.addEventListener('click', () => {
+            if (!userId) {
+                displayError("Autenticação não concluída. Por favor, aguarde ou recarregue a página.");
+                return;
+            }
+            showPromptInputModal("Excluir Funcionário", "Digite a matrícula do funcionário que deseja excluir:", async (matricula) => {
+                if (matricula) {
+                    showConfirmationModal(
+                        "Confirmar Exclusão",
+                        `Tem certeza que deseja excluir o funcionário com matrícula ${matricula}?`,
+                        async (confirmed) => {
+                            if (confirmed) {
+                                await deleteEmployee(matricula);
+                            } else {
+                                displayMessage("Exclusão cancelada.");
+                            }
+                        }
+                    );
+                } else {
+                    displayMessage("Exclusão de funcionário cancelada ou matrícula não fornecida.");
+                }
+            });
+        });
+
+
+        // Function to open Edit Employee Modal and pre-fill data
+        function openEditEmployeeModal(employeeData) {
+            openModal(editEmployeeModal);
+            editOriginalMatriculaInput.value = employeeData.matricula; // Store original matricula for update query
+            editNomeInput.value = employeeData.nome;
+            editMatriculaInput.value = employeeData.matricula; // Allow changing matricula
+            editCargoInput.value = employeeData.cargo;
+            editDataAdmissaoInput.value = employeeData.dataAdmissao;
+            editTelefoneInput.value = employeeData.telefone || '';
+            editEmailInput.value = employeeData.email || '';
+            editDepartamentoInput.value = employeeData.departamento || '';
+            editNomeInput.focus();
+        }
+
+        // Event listener for saving manual edit employee form
+        editEmployeeForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent default form submission
+            const originalMatricula = editOriginalMatriculaInput.value;
+            const updatedData = {
+                nome: editNomeInput.value,
+                matricula: editMatriculaInput.value,
+                cargo: editCargoInput.value,
+                dataAdmissao: editDataAdmissaoInput.value,
+                telefone: editTelefoneInput.value,
+                email: editEmailInput.value,
+                departamento: editDepartamentoInput.value
+            };
+
+            if (!updatedData.nome || !updatedData.matricula || !updatedData.cargo || !updatedData.dataAdmissao) {
+                displayError("Por favor, preencha todos os campos obrigatórios (Nome, Matrícula, Cargo, Data de Admissão).");
+                return;
+            }
+            if (isNaN(new Date(updatedData.dataAdmissao).getTime())) {
+                displayError("Data de admissão inválida. Por favor, forneça no formato AAAA-MM-DD.");
+                return;
+            }
+
+            const success = await updateEmployee(originalMatricula, updatedData);
+            if (success) {
+                closeModal(editEmployeeModal);
+            }
+        });
+
+        // Event listener for canceling manual edit employee form
+        cancelEditBtn.addEventListener('click', () => {
+            closeModal(editEmployeeModal);
+        });
+
 
         // Initialize Firebase when the window loads
         window.onload = initializeFirebase;
